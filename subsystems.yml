@@ -28,6 +28,7 @@ subsystems:
     repo: League-Robotics/aprilcam
     branch: master
 
-  - name: radio-relay
-    repo: League-Microbit/radio-relay   # micro:bit serial<->radio bridge (different org)
-    branch: main
+  - name: microbit-radio-relay
+    repo: League-Robotics/microbit-radio-relay   # micro:bit serial<->radio bridge
+    branch: master
+
