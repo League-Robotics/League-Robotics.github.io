@@ -1,0 +1,39 @@
+name: Notify docs hub
+
+# Pings the League Robotics docs hub to rebuild whenever this repo's docs change.
+# This repo never pushes content to the hub — the hub pulls docs/wiki/ from here.
+#
+# Requires two ORG-LEVEL secrets/variables (set once for the whole org by an admin):
+#   vars.DOCS_HUB_APP_ID            – the GitHub App's id
+#   secrets.DOCS_HUB_APP_PRIVATE_KEY – the GitHub App's private key
+# Copy this file to .github/workflows/notify-docs-hub.yml in your repo verbatim.
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/wiki/**"]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # Mint a short-lived token scoped to the hub repo only.
+      - name: Get app token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.DOCS_HUB_APP_ID }}
+          private-key: ${{ secrets.DOCS_HUB_APP_PRIVATE_KEY }}
+          owner: League-Robotics
+          repositories: League-Robotics.github.io
+
+      - name: Ping the hub to rebuild
+        env:
+          HUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          curl -sSf -X POST \
+            -H "Authorization: Bearer $HUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/League-Robotics/League-Robotics.github.io/dispatches \
+            -d '{"event_type":"docs-updated","client_payload":{"repo":"${{ github.repository }}"}}'

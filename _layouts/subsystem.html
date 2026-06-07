@@ -1,0 +1,23 @@
+---
+layout: default
+---
+<nav class="breadcrumb"><a href="{{ '/' | relative_url }}">Subsystems</a> / {{ page.title | default: page.name }}</nav>
+
+<section class="subsystem-header">
+  <h1>{{ page.title | default: page.name }}</h1>
+  {% if page.blurb %}<p>{{ page.blurb }}</p>{% endif %}
+  {% if page.repo_url %}<p class="muted"><a href="{{ page.repo_url }}">Source repository &rarr;</a></p>{% endif %}
+</section>
+
+{% if page.docs and page.docs.size > 0 %}
+<ul class="doc-list">
+  {% for d in page.docs %}
+  <li class="doc-item">
+    <a href="{{ d.url | relative_url }}"><strong>{{ d.title }}</strong></a>
+    {% if d.blurb %}<p>{{ d.blurb }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">This subsystem has no documents yet.</p>
+{% endif %}

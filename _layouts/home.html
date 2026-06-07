@@ -1,0 +1,29 @@
+---
+layout: default
+---
+<section class="intro">
+  <h1>{{ site.title }}</h1>
+  <p>{{ site.description }}</p>
+  <p class="muted">
+    Each card is a subsystem repository. Docs are authored in that repo's
+    <code>docs/wiki/</code> and pulled here automatically.
+    Maintain a repo?
+    <a href="{{ '/publishing/' | relative_url }}">See how to publish your docs &rarr;</a>
+  </p>
+</section>
+
+{% assign subsystems = site.data.subsystems | sort: "order" %}
+{% if subsystems and subsystems.size > 0 %}
+<ul class="card-grid">
+  {% for s in subsystems %}
+  <li class="card">
+    <a class="card-link" href="{{ s.url | relative_url }}">
+      <h2>{{ s.title | default: s.name }}</h2>
+      {% if s.blurb %}<p>{{ s.blurb }}</p>{% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No subsystems published yet. Add one to <code>subsystems.yml</code>.</p>
+{% endif %}

@@ -1,0 +1,22 @@
+# Registry of subsystem repositories whose docs/wiki/ the hub pulls and renders.
+#
+# This is the ONLY place a subsystem is added. To onboard a repo, append an entry
+# here in a pull request. The build (scripts/collect.py) clones each repo, reads
+# its docs/wiki/, and publishes the docs to the site. Nothing is pushed by the
+# subsystems themselves — they only ping the hub to trigger a rebuild.
+#
+# Fields:
+#   name       (required) stable key, becomes the URL /subsystems/<name>/
+#   repo       (required) "owner/repo" on github.com
+#   branch     (optional) branch to pull from        (default: main)
+#   docs_path  (optional) docs directory in the repo (default: docs/wiki)
+
+subsystems: []
+  # - name: ros-deploy
+  #   repo: League-Robotics/ros-deploy
+  #   branch: main
+  #   docs_path: docs/wiki
+  #
+  # - name: romi
+  #   repo: League-Robotics/Romi
+  #   branch: main

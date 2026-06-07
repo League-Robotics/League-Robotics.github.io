@@ -1,0 +1,6 @@
+# Subsystem-level metadata for the League Robotics docs hub.
+# Lives at docs/wiki/_subsystem.yml in YOUR repo.
+name: my-subsystem                      # stable key; should match the registry entry
+title: My Subsystem                     # display name on the hub
+blurb: One sentence describing what this subsystem does.
+order: 100                              # optional — lower sorts earlier on the home page
