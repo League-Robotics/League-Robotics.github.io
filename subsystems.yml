@@ -11,12 +11,19 @@
 #   branch     (optional) branch to pull from        (default: main)
 #   docs_path  (optional) docs directory in the repo (default: docs/wiki)
 
-subsystems: []
-  # - name: ros-deploy
-  #   repo: League-Robotics/ros-deploy
-  #   branch: main
-  #   docs_path: docs/wiki
-  #
-  # - name: romi
-  #   repo: League-Robotics/Romi
-  #   branch: main
+subsystems:
+  - name: python-serial-hub-control
+    repo: League-Robotics/python-serial-hub-control
+    branch: main
+
+  - name: ros-deploy
+    repo: League-Robotics/ros-deploy
+    branch: master
+
+  - name: radio-robot
+    repo: League-Robotics/radio-robot
+    branch: master
+
+  - name: aprilcam
+    repo: League-Robotics/aprilcam
+    branch: master
