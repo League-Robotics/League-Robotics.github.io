@@ -21,6 +21,7 @@ layout: default
       <h2>{{ s.title | default: s.name }}</h2>
       {% if s.blurb %}<p>{{ s.blurb }}</p>{% endif %}
     </a>
+    {% if s.repo_url %}<a class="card-repo" href="{{ s.repo_url }}">GitHub &rarr;</a>{% endif %}
   </li>
   {% endfor %}
 </ul>

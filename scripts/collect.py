@@ -20,6 +20,8 @@ token interchangeably. Public repos clone anonymously when the var is empty.
 from __future__ import annotations
 
 import os
+import posixpath
+import re
 import shutil
 import subprocess
 import sys
@@ -27,6 +29,11 @@ from pathlib import Path
 
 import frontmatter
 import yaml
+
+# Matches inline link/image targets — `](target)` or `](target "title")` — and
+# reference-style definitions — `[label]: target`. Group "t" is the target.
+_INLINE_LINK = re.compile(r"(?P<pre>\]\()(?P<t>[^)\s]+)(?P<post>(?:\s+\"[^\"]*\")?\))")
+_REF_LINK = re.compile(r"(?P<pre>^[ \t]*\[[^\]]+\]:[ \t]*)(?P<t>\S+)", re.MULTILINE)
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "subsystems.yml"
@@ -67,6 +74,35 @@ def slugify(value: str) -> str:
     while "--" in out:
         out = out.replace("--", "-")
     return out.strip("-") or "doc"
+
+
+def rewrite_links(body: str, slug_by_file: dict, name: str, repo_url: str,
+                  branch: str, docs_path: str) -> str:
+    """Fix relative *.md links so they resolve on the hub.
+
+    Authors cross-link docs with repo-relative paths (e.g. `](administration.md)`).
+    Under our directory-style permalinks those 404. A link to another doc in the
+    same wiki becomes its hub permalink; any other relative `.md` link becomes a
+    GitHub source URL so it still resolves. Absolute URLs and anchors are left alone.
+    """
+
+    def resolve(target: str) -> str:
+        if not target or target[0] in "#?" or "://" in target or target.startswith(("//", "mailto:")):
+            return target
+        path, sep, frag = target.partition("#")
+        if not path.lower().endswith(".md"):
+            return target
+        sibling = slug_by_file.get(posixpath.basename(path))
+        if sibling is not None and "/" not in path.strip("./"):
+            return f"/subsystems/{name}/{sibling}/" + (sep + frag if sep else "")
+        # Relative .md outside the wiki: point at the source repo, resolved
+        # against the doc's directory (docs_path).
+        resolved = posixpath.normpath(posixpath.join(docs_path, path))
+        return f"{repo_url}/blob/{branch}/{resolved}" + (sep + frag if sep else "")
+
+    body = _INLINE_LINK.sub(lambda m: m["pre"] + resolve(m["t"]) + m["post"], body)
+    body = _REF_LINK.sub(lambda m: m["pre"] + resolve(m["t"]), body)
+    return body
 
 
 def write_with_front_matter(path: Path, meta: dict, body: str) -> None:
@@ -116,8 +152,9 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
     blurb = sub_meta.get("blurb", "")
     order = sub_meta.get("order", 100)
 
-    # Collect docs.
-    docs = []
+    # Pass 1: parse every doc and compute its slug, so we can resolve
+    # cross-doc links before writing any bodies.
+    parsed = []
     for md in sorted(wiki.glob("*.md")):
         if md.name.startswith("_"):
             continue
@@ -126,13 +163,19 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         except Exception as e:  # noqa: BLE001 - frontmatter raises various types
             warn(f"{name}/{md.name}: unreadable front matter ({e}) — skipping doc")
             continue
+        parsed.append((md, post, slugify(str(post.get("slug") or md.stem))))
 
+    slug_by_file = {md.name: slug for md, _, slug in parsed}
+
+    # Pass 2: rewrite intra-wiki links and write each doc.
+    docs = []
+    for md, post, slug in parsed:
         doc_title = post.get("title") or md.stem
         doc_blurb = post.get("blurb", "")
         doc_order = post.get("order", 100)
-        slug = slugify(str(post.get("slug") or md.stem))
         url = f"/subsystems/{name}/{slug}/"
         source_url = f"{repo_url}/blob/{branch}/{docs_path}/{md.name}"
+        body = rewrite_links(post.content, slug_by_file, name, repo_url, branch, docs_path)
 
         write_with_front_matter(
             OUT_DIR / name / f"{slug}.md",
@@ -145,7 +188,7 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
                 "source_url": source_url,
                 "tags": post.get("tags", []),
             },
-            post.content,
+            body,
         )
         docs.append(
             {
@@ -175,7 +218,14 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         "",
     )
 
-    return {"name": name, "title": title, "blurb": blurb, "order": order, "url": f"/subsystems/{name}/"}
+    return {
+        "name": name,
+        "title": title,
+        "blurb": blurb,
+        "order": order,
+        "url": f"/subsystems/{name}/",
+        "repo_url": repo_url,
+    }
 
 
 def main() -> int:
