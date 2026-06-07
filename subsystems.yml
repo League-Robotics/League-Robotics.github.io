@@ -11,7 +11,11 @@
 #   branch     (optional) branch to pull from        (default: main)
 #   docs_path  (optional) docs directory in the repo (default: docs/wiki)
 
-subsystems: []
+subsystems:
+  - name: serial-hub-control
+    repo: League-Robotics/python-serial-hub-control
+    branch: main
+    docs_path: docs/wiki
   # - name: ros-deploy
   #   repo: League-Robotics/ros-deploy
   #   branch: main
