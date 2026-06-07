@@ -16,3 +16,7 @@ _data/subsystems.yml
 __pycache__/
 *.pyc
 .venv/
+# dotconfig — assembled env files contain decrypted secrets
+.env
+.env.*
+!.env.example

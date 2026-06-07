@@ -39,6 +39,28 @@ subsystems:
     docs_path: docs/wiki    # optional (default)
 ```
 
+## One-time setup: enable GitHub Pages
+
+The site is published by the `build-deploy.yml` workflow (not the legacy "deploy from a
+branch" mode), so Pages must be told to use Actions as its source:
+
+1. Repo → **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**. (There is no
+   branch/folder to pick — the workflow uploads the built site directly.)
+3. Make sure the repo is **public** (org `*.github.io` sites need a public repo unless your
+   org plan allows private Pages).
+4. Trigger the first deploy: push to the default branch, or run **Actions → Build & deploy
+   docs hub → Run workflow** (`workflow_dispatch`).
+5. The first run auto-creates a `github-pages` environment and publishes to
+   `https://league-robotics.github.io/`. The deployed URL also appears on the workflow run.
+
+> This must be set to **GitHub Actions** before the first run — otherwise the `deploy`
+> job fails with a Pages-not-enabled error. The workflow already has the required
+> `pages: write` and `id-token: write` permissions.
+
+> **Custom domain (optional):** set it under Settings → Pages → Custom domain, and add a
+> `CNAME` file at the repo root. Not needed for the default `league-robotics.github.io`.
+
 ## One-time setup: the GitHub App
 
 Authentication for both directions (the hub pulling repos, and subsystems pinging the hub)
