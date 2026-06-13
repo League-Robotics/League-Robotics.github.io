@@ -17,4 +17,8 @@ layout: default
   <div class="doc-body">
     {{ content }}
   </div>
+
+  <footer class="doc-footer muted">
+    {% if page.updated %}Source updated {{ page.updated | date: "%B %-d, %Y" }} · {% endif %}Published by the hub {{ site.time | date: "%B %-d, %Y" }}.
+  </footer>
 </article>

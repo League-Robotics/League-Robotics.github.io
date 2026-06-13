@@ -113,5 +113,6 @@ pre code { background: none; padding: 0; }
 
 .doc-body { margin-top: 1.5rem; }
 .doc-header { border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+.doc-footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.85rem; }
 
 .empty, .muted.empty { color: var(--muted); font-style: italic; }

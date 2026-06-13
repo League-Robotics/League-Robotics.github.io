@@ -28,10 +28,12 @@ your repo (docs/wiki/) --- ping ("docs-updated") ---> hub pulls + renders + publ
 ```
 docs/wiki/
   _subsystem.yml          # subsystem metadata (title, blurb)
+  index.md                # the map: links key docs + lists open tasks (see "Keep your wiki useful")
   overview.md             # one or more docs; each *.md becomes one page
   ...
 .github/workflows/
   notify-docs-hub.yml     # pings the hub when docs/wiki/ changes
+AGENTS.md                 # repo-root note so the next agent knows the wiki publishes here
 ```
 
 ### `docs/wiki/_subsystem.yml`
@@ -54,18 +56,23 @@ title: Deploying ROS 2 with Ansible
 blurb: How to provision a ROS 2 fleet across Pi / VM / Docker hosts.
 order: 10            # optional — sort order within the subsystem
 slug: deploy-ros     # optional — stable URL id; defaults to the filename
+updated: 2026-06-13  # optional — source date; shown in the page footer
 tags: [ros, ansible] # optional
 ---
 Body markdown… (your real documentation)
 ```
 
-| Field   | Required | Meaning                                                        |
-|---------|----------|----------------------------------------------------------------|
-| `title` | yes      | Heading and link text on the hub.                              |
-| `blurb` | yes      | One-line summary shown in the doc list.                        |
-| `order` | no       | Sort position within the subsystem (default 100).             |
-| `slug`  | no       | Stable id → `/subsystems/<name>/<slug>/` (default: filename). |
-| `tags`  | no       | Free-form list, carried through to the page.                   |
+| Field     | Required | Meaning                                                        |
+|-----------|----------|----------------------------------------------------------------|
+| `title`   | yes      | Heading and link text on the hub.                              |
+| `blurb`   | yes      | One-line summary shown in the doc list.                        |
+| `order`   | no       | Sort position within the subsystem (default 100).             |
+| `slug`    | no       | Stable id → `/subsystems/<name>/<slug>/` (default: filename). |
+| `updated` | no       | Source date (`YYYY-MM-DD`); surfaced in the page footer. `date` also works. |
+| `tags`    | no       | Free-form list, carried through to the page.                   |
+
+Every rendered page already shows when the hub last generated it in the footer; `updated`
+adds the date *you* last touched the source.
 
 ### `.github/workflows/notify-docs-hub.yml`
 
@@ -102,6 +109,55 @@ jobs:
 ```
 
 > If your default branch isn't `main`, change `branches: [main]` accordingly.
+
+### `AGENTS.md` (leave yourself a map)
+
+Once the wiki is set up, drop an `AGENTS.md` at the **root of your repo**. Its job is to
+tell the next agent — who may arrive months later with no context — what `docs/wiki/` is,
+that this repo's docs are published to the hub, and where the authoritative instructions
+live (this page). Copy this and replace `<name>`:
+
+```markdown
+# AGENTS.md — this repo publishes docs to the League Robotics hub
+
+Documentation for this repo lives under `docs/wiki/`. Those files are the **source of
+truth**; the League Robotics docs hub *pulls* them and publishes them at
+<https://league-robotics.github.io/subsystems/<name>/>. The hub never writes back here —
+edit docs in this repo only.
+
+## What to do
+
+When you learn something a future agent will need, write it into `docs/wiki/`:
+
+- Each `docs/wiki/*.md` is one published page and needs `title:` and `blurb:` front
+  matter. Files starting with `_` are not published.
+- `docs/wiki/_subsystem.yml` holds this subsystem's `name` / `title` / `blurb`.
+- Keep `docs/wiki/index.md` as the map: link the key docs and list open tasks / things to
+  remember, so the next agent finds them fast.
+- Add an `updated:` date to a doc's front matter when you change it.
+- Changes under `docs/wiki/**` auto-ping the hub to rebuild (see
+  `.github/workflows/notify-docs-hub.yml`).
+
+## How to understand what to do
+
+The complete contract — file formats, the notify workflow, how to register — is the
+authoritative spec at **<https://league-robotics.github.io/publishing/>**. Start there.
+```
+
+## Keep your wiki useful for the next agent
+
+The wiki isn't just public docs — it's the durable memory for agents working in this repo.
+Two habits keep it that way:
+
+- **Index your knowledge base.** As soon as you have more than a handful of docs — design
+  notes, decisions, open tasks, gotchas a future agent must not forget — add a top-level
+  `docs/wiki/index.md` with `order: 0` that links the important pages and lists the
+  outstanding work. It sorts first, so it's the obvious entry point. *How* you organize it
+  doesn't matter; that it's discoverable does.
+- **Date your pages.** Make it clear when each page was written or published. The hub
+  stamps every rendered page with the date it was generated (in the footer). To also show
+  when *you* last revised the source, set `updated:` (or `date:`) in the doc's front
+  matter — see the field table above.
 
 ## Authentication (one org-wide GitHub App)
 

@@ -173,23 +173,24 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         doc_title = post.get("title") or md.stem
         doc_blurb = post.get("blurb", "")
         doc_order = post.get("order", 100)
+        # Optional source date for the page footer; `updated` wins over `date`.
+        doc_updated = post.get("updated") or post.get("date")
         url = f"/subsystems/{name}/{slug}/"
         source_url = f"{repo_url}/blob/{branch}/{docs_path}/{md.name}"
         body = rewrite_links(post.content, slug_by_file, name, repo_url, branch, docs_path)
 
-        write_with_front_matter(
-            OUT_DIR / name / f"{slug}.md",
-            {
-                "layout": "doc",
-                "title": doc_title,
-                "blurb": doc_blurb,
-                "subsystem": name,
-                "permalink": url,
-                "source_url": source_url,
-                "tags": post.get("tags", []),
-            },
-            body,
-        )
+        doc_meta = {
+            "layout": "doc",
+            "title": doc_title,
+            "blurb": doc_blurb,
+            "subsystem": name,
+            "permalink": url,
+            "source_url": source_url,
+            "tags": post.get("tags", []),
+        }
+        if doc_updated:
+            doc_meta["updated"] = str(doc_updated)
+        write_with_front_matter(OUT_DIR / name / f"{slug}.md", doc_meta, body)
         docs.append(
             {
                 "title": doc_title,
