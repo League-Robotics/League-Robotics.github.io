@@ -32,3 +32,7 @@ subsystems:
     repo: League-Robotics/microbit-radio-relay   # micro:bit serial<->radio bridge
     branch: master
 
+  - name: frc-code-scout
+    repo: League-Robotics/frc-code-scout
+    branch: master
+
