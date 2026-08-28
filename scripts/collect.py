@@ -36,6 +36,11 @@ _INLINE_LINK = re.compile(r"(?P<pre>\]\()(?P<t>[^)\s]+)(?P<post>(?:\s+\"[^\"]*\"
 _REF_LINK = re.compile(r"(?P<pre>^[ \t]*\[[^\]]+\]:[ \t]*)(?P<t>\S+)", re.MULTILINE)
 
 ROOT = Path(__file__).resolve().parent.parent
+#: Slug owned by the generated subsystem landing page; a doc may not use it.
+RESERVED_SLUG = "index"
+#: What a doc claiming RESERVED_SLUG is published as instead.
+FALLBACK_SLUG = "start-here"
+
 REGISTRY = ROOT / "subsystems.yml"
 TMP = ROOT / ".collect-tmp"
 OUT_DIR = ROOT / "subsystems"
@@ -163,7 +168,19 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         except Exception as e:  # noqa: BLE001 - frontmatter raises various types
             warn(f"{name}/{md.name}: unreadable front matter ({e}) — skipping doc")
             continue
-        parsed.append((md, post, slugify(str(post.get("slug") or md.stem))))
+        slug = slugify(str(post.get("slug") or md.stem))
+        if slug == RESERVED_SLUG:
+            # The generated subsystem landing page is written to
+            # OUT_DIR/<name>/index.md further down, so a doc claiming this slug
+            # is silently overwritten by it while still being listed -- the link
+            # then 404s. The publishing contract tells authors to keep a
+            # docs/wiki/index.md as their map, so this is an ordinary thing to
+            # hit; rename it rather than dropping the doc.
+            slug = FALLBACK_SLUG
+            warn(f"{name}: {md.name} claims the reserved '{RESERVED_SLUG}' slug "
+                 f"(the generated landing page owns it) -- publishing it as "
+                 f"'{slug}' instead")
+        parsed.append((md, post, slug))
 
     slug_by_file = {md.name: slug for md, _, slug in parsed}
 
