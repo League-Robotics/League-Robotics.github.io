@@ -36,3 +36,7 @@ subsystems:
     repo: League-Robotics/frc-code-scout
     branch: master
 
+
+  - name: mbdeploy
+    repo: Busboombot/mbdeploy               # micro:bit build/flash/serial CLI + fleet daemon
+    branch: main
