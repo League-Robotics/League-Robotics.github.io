@@ -6,7 +6,7 @@ layout: default
 <section class="subsystem-header">
   <h1>{{ page.title | default: page.name }}</h1>
   {% if page.blurb %}<p>{{ page.blurb }}</p>{% endif %}
-  {% if page.repo_url %}<p class="muted"><a href="{{ page.repo_url }}">Source repository &rarr;</a></p>{% endif %}
+  {% if page.repo_url %}<p class="muted"><a href="{{ page.wiki_url }}">Wiki &rarr;</a> · <a href="{{ page.repo_url }}">Source repo &rarr;</a></p>{% endif %}
 </section>
 
 {% if page.docs and page.docs.size > 0 %}
