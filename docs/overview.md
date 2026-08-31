@@ -1,39 +1,61 @@
 # Overview: League-Robotics docs hub
 
-> **This supersedes the original push-model draft.** The system is **central-pull**: this
-> repo (the hub) owns a registry and pulls each subsystem's docs. The detailed, executable
-> design is in [implementation-plan.md](implementation-plan.md); the author-facing contract
-> is published at <https://league-robotics.github.io/publishing/>.
+> **Current architecture.** The hub is a **directory of GitHub wikis**. It supersedes both
+> the original push-model draft and the central-pull *full-mirror* design described in
+> [implementation-plan.md](implementation-plan.md), which is kept only as history. The
+> author-facing contract is published at <https://league-robotics.github.io/publishing/>.
 
 ## What this is
 
-The `League-Robotics` org has many subsystem repos (`ros-deploy`, `Romi`, `nezha`, …) with
-no single place to discover or read their docs. This repo, `League-Robotics.github.io`, is a
-Jekyll **documentation hub** served at <https://league-robotics.github.io/>. We do **not**
-use the GitHub wiki feature.
+The `League-Robotics` org has many subsystem repos (`ros-deploy`, `aprilcam`, `mbdeploy`, …)
+with no single place to discover them. This repo, `League-Robotics.github.io`, is a small
+Jekyll site served at <https://league-robotics.github.io/> that lists them all and links to
+each one's documentation.
 
-## How it works (central-pull, full-mirror)
+## How it works (directory of wikis)
 
-- Authoring stays in each subsystem repo, under `docs/wiki/` (the source of truth).
+- Authoring **and reading** happen in each subsystem repo's **GitHub wiki**
+  (`https://github.com/<owner>/<repo>/wiki`). There is exactly one copy of every doc.
 - The hub keeps a hand-edited registry, [`../subsystems.yml`](../subsystems.yml), of which
-  repos to publish.
-- On each build, the hub **pulls** every registered repo's `docs/wiki/`, mirrors the doc
-  bodies, and renders them under one domain at `/subsystems/<name>/`.
-- Subsystems never push content to the hub. They only send a `repository_dispatch` ping
-  (`docs-updated`) that triggers a rebuild. The hub does the entire rebuild itself.
+  repos to list, along with each card's `title` / `blurb` / `order`.
+- On each build, `scripts/collect.py` shallow-clones every registered `<repo>.wiki.git`,
+  confirms it exists and is reachable, reads an optional `<!-- meta: {...} -->` override in
+  `Home.md`, counts its pages, and records the wiki's last-edit date. The result is
+  `_data/subsystems.yml`.
+- Jekyll renders two pages: the directory (`/`) and the publishing contract
+  (`/publishing/`). No doc content is copied into this repo.
+- Subsystems never push content to the hub. Their `gollum`-triggered workflow sends a
+  `repository_dispatch` ping (`docs-updated`) so the card's page count and date refresh.
 
 ```
-subsystem repo (docs/wiki/) --- ping ---> hub: pull all repos → render → deploy Pages
-        ^ source of truth                          league-robotics.github.io
+subsystem repo's wiki  --- ping --->  hub: check every wiki → render directory → deploy Pages
+   ^ source of truth, and where              league-robotics.github.io
+     the docs are actually read
 ```
 
 ## Key decisions
 
-- **Full-mirror** — docs render on the hub (each page also links back to its source repo).
+- **Link, don't mirror** — one copy of each doc, in the wiki. The hub can't go stale, wiki
+  search and page history work normally, and agents can edit docs with a plain `git push`
+  to `<repo>.wiki.git`.
+- **No front matter in wiki pages** — GitHub renders a wiki page verbatim, so YAML front
+  matter would be visible junk. Metadata rides in an HTML comment:
+  `<!-- meta: {"order":10,"tags":[…],"updated":"YYYY-MM-DD"} -->`.
+- **Registry owns card text, wiki can override** — `subsystems.yml` supplies
+  `title`/`blurb`/`order`; a `meta` comment in `Home.md` wins, so a subsystem can rename
+  itself without a hub PR.
 - **Dispatch-only** — rebuilds on a subsystem ping, manual run, or push to the hub. No cron.
 - **Hand-edited `subsystems.yml`** — onboarding a repo is a PR adding one entry.
-- **Python collector** — `scripts/collect.py` (PyYAML + python-frontmatter).
-- **One org-wide GitHub App** for auth (no long-lived PATs); workflows mint short-lived tokens.
+- **Python collector** — `scripts/collect.py` (PyYAML only).
+- **One org-wide GitHub App** for auth (no long-lived PATs); workflows mint short-lived
+  tokens. A wiki inherits its repo's visibility, so a private repo's wiki needs the token.
 
-See [implementation-plan.md](implementation-plan.md) for the full file list, the collector
-behavior, the workflows, and end-to-end verification steps.
+## Consequences of the switch away from mirroring
+
+- `/subsystems/<name>/` and `/subsystems/<name>/<slug>/` URLs **no longer exist**. Anything
+  linking to them should point at the wiki instead.
+- The collector no longer parses front matter, rewrites links, or writes page bodies —
+  `python-frontmatter` is gone from `scripts/requirements.txt`, and `_layouts/subsystem.html`
+  was deleted.
+- `docs/wiki/` in a subsystem repo is obsolete. Move it into the wiki and delete it, so
+  there is never a second copy to drift.

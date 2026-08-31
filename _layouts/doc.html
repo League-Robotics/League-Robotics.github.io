@@ -2,16 +2,13 @@
 layout: default
 ---
 <nav class="breadcrumb">
-  <a href="{{ '/' | relative_url }}">Subsystems</a>
-  {% if page.subsystem %} / <a href="{{ '/subsystems/' | append: page.subsystem | append: '/' | relative_url }}">{{ page.subsystem }}</a>{% endif %}
-  / {{ page.title }}
+  <a href="{{ '/' | relative_url }}">Subsystems</a> / {{ page.title }}
 </nav>
 
 <article class="doc">
   <header class="doc-header">
     <h1>{{ page.title }}</h1>
     {% if page.blurb %}<p class="muted">{{ page.blurb }}</p>{% endif %}
-    {% if page.source_url %}<p class="source-link"><a href="{{ page.source_url }}">View source on GitHub &rarr;</a></p>{% endif %}
   </header>
 
   <div class="doc-body">
@@ -19,6 +16,6 @@ layout: default
   </div>
 
   <footer class="doc-footer muted">
-    {% if page.updated %}Source updated {{ page.updated | date: "%B %-d, %Y" }} · {% endif %}Published by the hub {{ site.time | date: "%B %-d, %Y" }}.
+    {% if page.updated %}Updated {{ page.updated | date: "%B %-d, %Y" }} · {% endif %}Published {{ site.time | date: "%B %-d, %Y" }}.
   </footer>
 </article>

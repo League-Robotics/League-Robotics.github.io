@@ -16,8 +16,14 @@ bundle exec jekyll build      # or: bundle exec jekyll serve
 
 ## How a build works
 
-`scripts/collect.py` clones every repo in `subsystems.yml`, mirrors each repo's
-`docs/wiki/` into `subsystems/<name>/`, and writes `_data/subsystems.yml`. Jekyll then
-renders the site. Everything the collector writes (`subsystems/`, `_data/subsystems.yml`,
-`_site/`) is gitignored and regenerated on every build — never commit it. The real CI
-build/deploy is `.github/workflows/build-deploy.yml`; `master` is the deploy branch.
+The hub is a **directory**, not a mirror: every subsystem's docs live in that repo's
+GitHub wiki and are read there. `scripts/collect.py` shallow-clones each
+`<repo>.wiki.git` from `subsystems.yml` to confirm it's reachable, reads an optional
+`<!-- meta: {...} -->` override in `Home.md`, counts pages, and writes
+`_data/subsystems.yml`. Jekyll renders one page: a card grid linking straight to
+`github.com/<repo>/wiki`. No doc content is ever copied into this repo.
+
+Everything the collector writes (`_data/subsystems.yml`, `.collect-tmp/`, plus `_site/`)
+is gitignored and regenerated on every build — never commit it. `subsystems/` is a
+leftover from the old mirroring collector; `collect.py` deletes it on every run. The real
+CI build/deploy is `.github/workflows/build-deploy.yml`; `master` is the deploy branch.

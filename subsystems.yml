@@ -1,42 +1,72 @@
-# Registry of subsystem repositories whose docs/wiki/ the hub pulls and renders.
+# Registry of subsystem repositories whose GitHub wikis the hub links to.
 #
 # This is the ONLY place a subsystem is added. To onboard a repo, append an entry
-# here in a pull request. The build (scripts/collect.py) clones each repo, reads
-# its docs/wiki/, and publishes the docs to the site. Nothing is pushed by the
+# here in a pull request. Docs are published in the repo's own GitHub wiki and are
+# read there — the hub does not copy them. The build (scripts/collect.py) checks
+# each wiki is reachable and writes the card data for the directory page; the card
+# links straight to https://github.com/<repo>/wiki. Nothing is pushed by the
 # subsystems themselves — they only ping the hub to trigger a rebuild.
 #
 # Fields:
-#   name       (required) stable key, becomes the URL /subsystems/<name>/
-#   repo       (required) "owner/repo" on github.com
-#   branch     (optional) branch to pull from        (default: main)
-#   docs_path  (optional) docs directory in the repo (default: docs/wiki)
+#   name    (required) stable key for this subsystem
+#   repo    (required) "owner/repo" on github.com; its wiki is the docs source
+#   title   (optional) display name on the card       (default: name)
+#   blurb   (optional) one sentence shown on the card (default: none)
+#   order   (optional) lower sorts earlier            (default: 100)
+#
+# A wiki can override title/blurb/order itself with a `<!-- meta: {...} -->` block
+# in its Home page, so a subsystem can rename itself without a PR here.
 
 subsystems:
-  - name: python-serial-hub-control
-    repo: League-Robotics/python-serial-hub-control
-    branch: main
-
   - name: ros-deploy
     repo: League-Robotics/ros-deploy
-    branch: master
-
-  - name: radio-robot
-    repo: League-Robotics/radio-robot
-    branch: master
+    title: ROS Deploy
+    blurb: >-
+      Ansible-based deployment of ROS 2 across the robot fleet — physical robots,
+      Raspberry Pis, VMs, and Docker.
+    order: 20
 
   - name: aprilcam
     repo: League-Robotics/aprilcam
-    branch: master
+    title: AprilCam
+    blurb: >-
+      MCP server and gRPC daemon for AprilTag/ArUco perception on robotics
+      playfields — tag positions, orientation, velocity, and homography for AI
+      agents and robot control loops.
 
-  - name: microbit-radio-relay
-    repo: League-Robotics/microbit-radio-relay   # micro:bit serial<->radio bridge
-    branch: master
+  - name: radio-robot
+    repo: League-Robotics/radio-robot
+    title: Radio Robot
+    blurb: >-
+      C++ CODAL firmware and Python host library for the DFRobot QBot Pro
+      (micro:bit V2 + Nezha V2), driven over serial and micro:bit radio.
+
+  - name: python-serial-hub-control
+    repo: League-Robotics/python-serial-hub-control
+    title: REV Hub Serial Protocol (RHSP)
+    blurb: >-
+      Pure-Python driver and full wire-protocol reference for the REV Robotics
+      Expansion/Control Hub serial protocol.
 
   - name: frc-code-scout
     repo: League-Robotics/frc-code-scout
-    branch: master
-
+    title: FRC Code Scout
+    blurb: >-
+      Scores FRC/FTC team code against an 8-dimension sophistication rubric and
+      helps teams build elite robot architecture.
 
   - name: mbdeploy
-    repo: Busboombot/mbdeploy               # micro:bit build/flash/serial CLI + fleet daemon
-    branch: main
+    repo: Busboombot/mbdeploy
+    title: mbdeploy
+    blurb: >-
+      micro:bit build/flash/serial CLI and fleet daemon — addresses boards by a
+      stable human-readable name and reaches them over the LAN with mDNS.
+
+  - name: microbit-radio-relay
+    repo: League-Robotics/microbit-radio-relay
+    title: micro:bit Radio Relay
+    blurb: >-
+      C++/CODAL firmware that turns a micro:bit V2 into a transparent USB-serial
+      ↔ nRF radio bridge — no host library required, dual-mode (RAW250 /
+      MakeCode), flash-persistent config.
+    order: 110

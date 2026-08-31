@@ -1,17 +1,20 @@
 name: Notify docs hub
 
-# Pings the League Robotics docs hub to rebuild whenever this repo's docs change.
-# This repo never pushes content to the hub — the hub pulls docs/wiki/ from here.
+# Pings the League Robotics docs hub to refresh this subsystem's listing whenever the
+# repo's WIKI changes. Docs live in the wiki and are read there — the hub only links to
+# it, so this ping just refreshes the card's page count and "updated" date.
+#
+# `gollum` fires on any wiki page create/update (web edits and git pushes alike) and
+# runs this workflow from the default branch. This file lives in the code repo, not the
+# wiki.
 #
 # Requires two ORG-LEVEL secrets/variables (set once for the whole org by an admin):
-#   vars.DOCS_HUB_APP_ID            – the GitHub App's id
+#   vars.DOCS_HUB_APP_ID             – the GitHub App's id
 #   secrets.DOCS_HUB_APP_PRIVATE_KEY – the GitHub App's private key
 # Copy this file to .github/workflows/notify-docs-hub.yml in your repo verbatim.
 
 on:
-  push:
-    branches: [main]
-    paths: ["docs/wiki/**"]
+  gollum:
   workflow_dispatch:
 
 jobs:

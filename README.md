@@ -3,29 +3,32 @@
 The documentation **hub** for the League Robotics program, published at
 <https://league-robotics.github.io/>.
 
-Subsystem repos author their docs under `docs/wiki/`. This hub keeps a registry of those
-repos ([`subsystems.yml`](subsystems.yml)), **pulls** their docs on every build, and renders
-them under one domain. Subsystems never push content here — they only ping the hub to
-trigger a rebuild.
+Each subsystem authors its docs in **its own repo's GitHub wiki**, and that wiki is where
+the docs are read. This hub keeps a registry of those repos
+([`subsystems.yml`](subsystems.yml)), checks each wiki on every build, and publishes a
+**directory** — one card per subsystem, linking straight to its wiki. The hub keeps no copy
+of any doc. Subsystems never push content here; they only ping the hub to refresh the
+listing.
 
 - **Maintain a subsystem repo?** See <https://league-robotics.github.io/publishing/>
-  (or [`AGENTS.md`](AGENTS.md)) for how to structure your repo and the workflow to add.
+  (or [`AGENTS.md`](AGENTS.md)) for the wiki page format and the workflow to add.
 - **Architecture & design notes:** [`docs/implementation-plan.md`](docs/implementation-plan.md).
 
 ## Repo layout
 
 ```
-subsystems.yml                 # registry: which repos to pull (hand-edited)
-scripts/collect.py             # pulls each repo's docs/wiki/ → staged site content
+subsystems.yml                 # registry: which wikis to list, and their card text
+scripts/collect.py             # checks each repo's wiki → _data/subsystems.yml
 _config.yml, Gemfile           # Jekyll site config
 index.html, _layouts/, assets/ # site templates and styling
 publishing/index.md            # the /publishing/ guide for subsystem authors
 examples/subsystem-template/   # copy-paste files for a new subsystem repo
-.github/workflows/build-deploy.yml  # pull → jekyll build → deploy to Pages
+.github/workflows/build-deploy.yml  # check → jekyll build → deploy to Pages
 ```
 
-Generated content (`subsystems/`, `_data/subsystems.yml`) is produced by the collector at
-build time and is **gitignored** — never committed.
+Generated content (`_data/subsystems.yml`) is produced by the collector at build time and is
+**gitignored** — never committed. `subsystems/` is a leftover from the old mirroring
+collector; `collect.py` deletes it on every run.
 
 ## Add a subsystem (maintainer)
 
@@ -35,9 +38,14 @@ Append an entry to [`subsystems.yml`](subsystems.yml) and merge:
 subsystems:
   - name: ros-deploy
     repo: League-Robotics/ros-deploy
-    branch: main
-    docs_path: docs/wiki    # optional (default)
+    title: ROS Deploy       # optional — display name on the card
+    blurb: One sentence describing this subsystem.
+    order: 20               # optional — lower sorts earlier
 ```
+
+The repo's wiki (`https://github.com/<repo>/wiki`) is the docs source; there is no branch
+or path to configure. A wiki can override `title` / `blurb` / `order` itself with a
+`<!-- meta: {...} -->` comment in its `Home.md`.
 
 ## One-time setup: enable GitHub Pages
 
@@ -68,8 +76,8 @@ uses a single org-wide GitHub App, so there are no long-lived personal access to
 
 1. **Create the app** (org → Settings → Developer settings → GitHub Apps → New).
    - Repository permissions: **Contents: Read and write**, **Metadata: Read-only**.
-     (Read is needed to clone subsystem docs; write is needed so a subsystem can trigger
-     this repo's `repository_dispatch`.)
+     (Read is needed to clone subsystem wikis — a wiki inherits its repo's visibility;
+     write is needed so a subsystem can trigger this repo's `repository_dispatch`.)
    - Subscribe to events: none required.
 2. **Install** it on the League-Robotics org, **All repositories**.
 3. **Generate a private key** and note the **App ID**.
@@ -81,7 +89,7 @@ uses a single org-wide GitHub App, so there are no long-lived personal access to
 The workflows mint short-lived, least-privilege installation tokens from this app at run
 time via [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token).
 
-> If every subsystem repo is **public**, the hub can clone anonymously: you may drop the
+> If every subsystem repo is **public**, the hub can clone their wikis anonymously: you may drop the
 > app-token step from `build-deploy.yml`. The app is still required for the subsystem-side
 > notify workflow (cross-repo `repository_dispatch` needs an authenticated token).
 
@@ -89,7 +97,7 @@ time via [`actions/create-github-app-token`](https://github.com/actions/create-g
 
 ```bash
 pip install -r scripts/requirements.txt
-DOCS_PULL_TOKEN= python scripts/collect.py   # pulls public repos in subsystems.yml
+DOCS_PULL_TOKEN= python scripts/collect.py   # checks public wikis in subsystems.yml
 bundle install
 bundle exec jekyll serve                      # http://localhost:4000
 ```
@@ -100,5 +108,7 @@ Set `DOCS_PULL_TOKEN` to a token with read access if any registered repo is priv
 
 1. Triggered by a subsystem's `repository_dispatch` (`docs-updated`), a manual run, or a
    push to this repo.
-2. `scripts/collect.py` clones each registered repo and stages its docs.
+2. `scripts/collect.py` shallow-clones each registered repo's wiki, confirms it is
+   reachable, reads any `Home.md` overrides, counts its pages, and writes
+   `_data/subsystems.yml`.
 3. Jekyll builds the site; `actions/deploy-pages` publishes it.

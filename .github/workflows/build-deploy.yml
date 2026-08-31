@@ -1,6 +1,6 @@
 name: Build & deploy docs hub
 
-# The hub pulls every subsystem in subsystems.yml and rebuilds itself. It runs:
+# The hub checks every subsystem wiki in subsystems.yml and rebuilds itself. It runs:
 #   - when a subsystem pings us (repository_dispatch: docs-updated)
 #   - manually (workflow_dispatch)
 #   - when the hub itself changes (push to the default branch)
@@ -27,7 +27,8 @@ jobs:
       - uses: actions/checkout@v4
 
       # Mint a short-lived installation token (read access to org repos) from the
-      # org-wide GitHub App, so collect.py can clone private subsystem repos.
+      # org-wide GitHub App, so collect.py can clone private subsystem wikis (a
+      # wiki inherits its repo's visibility).
       # Omit this step + the env below if every subsystem repo is public.
       - name: Get app token (read org repos)
         id: app-token
@@ -44,7 +45,7 @@ jobs:
       - name: Install collector deps
         run: pip install -r scripts/requirements.txt
 
-      - name: Collect subsystem docs
+      - name: Check subsystem wikis
         env:
           DOCS_PULL_TOKEN: ${{ steps.app-token.outputs.token }}
         run: python scripts/collect.py

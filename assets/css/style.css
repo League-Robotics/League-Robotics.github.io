@@ -91,6 +91,11 @@ pre code { background: none; padding: 0; }
 .card-link:hover { text-decoration: none; }
 .card h2 { margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--accent); }
 .card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.card-meta {
+  margin: 0 1.1rem 0.4rem;
+  font-size: 0.85rem;
+}
+.card-meta:empty { display: none; }
 .card-repo {
   display: inline-block;
   margin: 0 1.1rem 1rem;

@@ -1,5 +1,13 @@
 # Plan: League-Robotics docs hub (central-pull, full-mirror) + agent-facing publishing spec
 
+> **HISTORICAL — superseded.** This plan describes the *full-mirror* hub, which copied each
+> repo's `docs/wiki/` onto the site at `/subsystems/<name>/<slug>/`. That is no longer how
+> the hub works: docs now live in each repo's **GitHub wiki** and are read there, and the
+> hub is a directory that links to them. See [overview.md](overview.md) for the current
+> architecture and <https://league-robotics.github.io/publishing/> for the author contract.
+> Kept for the rationale behind the registry, the dispatch-only rebuild, and the GitHub App
+> auth, which all survive unchanged.
+
 ## Context
 
 The `League-Robotics` org has many subsystem repos (`ros-deploy`, `Romi`, `nezha`, …).
