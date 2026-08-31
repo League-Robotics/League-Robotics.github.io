@@ -39,6 +39,8 @@ _INLINE_LINK = re.compile(r"(?P<pre>\]\()(?P<t>[^)\s]+)(?P<post>(?:\s+\"[^\"]*\"
 _REF_LINK = re.compile(r"(?P<pre>^[ \t]*\[[^\]]+\]:[ \t]*)(?P<t>\S+)", re.MULTILINE)
 # Extracts hidden metadata: <!-- meta: {"order":10,...} -->
 _META_COMMENT = re.compile(r'<!--\s*meta:\s*(\{.*?\})\s*-->', re.DOTALL)
+# Extracts subsystem metadata from wiki Home.md: <!-- subsystem: {"title":"...",...} -->
+_SUBSYSTEM_META = re.compile(r'<!--\s*subsystem:\s*(\{.*?\})\s*-->', re.DOTALL)
 
 ROOT = Path(__file__).resolve().parent.parent
 #: Slug owned by the generated subsystem landing page; a doc may not use it.
@@ -224,6 +226,25 @@ def parse_page(md: Path) -> dict:
     }
 
 
+def extract_home_metadata(clone_dir: Path) -> dict | None:
+    """Extract subsystem metadata from wiki Home.md.
+
+    Home.md may contain: <!-- subsystem: {"title":"...","blurb":"...","order":N} -->
+    Returns dict on success, None if not found.
+    """
+    home = clone_dir / "Home.md"
+    if not home.is_file():
+        return None
+    text = home.read_text(encoding="utf-8")
+    m = _SUBSYSTEM_META.search(text)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None
+
+
 def collect_subsystem(entry: dict, token: str) -> dict | None:
     """Clone one subsystem's wiki, mirror its docs, return its home-page summary."""
     name = entry.get("name")
@@ -235,16 +256,7 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
     branch = entry.get("branch", DEFAULT_BRANCH)
     repo_url = f"https://github.com/{repo}"
 
-    # Fetch _subsystem.yml from the main repo (still lives in docs/wiki/)
-    log(f"{name}: fetching _subsystem.yml from {repo}@{branch}")
-    sub_meta = fetch_subsystem_yml(repo, branch, token)
-
-    title = sub_meta.get("title", name)
-    blurb = sub_meta.get("blurb", "")
-    order = sub_meta.get("order", 100)
-
-    # Clone the wiki repo. Wiki repos always live at {repo}.wiki.git
-    # and use 'master' as their default branch.
+    # Clone the wiki repo first, so we can check Home.md
     wiki_repo = f"{repo}.wiki"
     clone_dir = TMP / name
     log(f"{name}: cloning wiki {wiki_repo}")
@@ -253,6 +265,18 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
     except subprocess.CalledProcessError as e:
         warn(f"{name}: wiki clone failed ({e.stderr.strip().splitlines()[-1:] or e}) — skipping")
         return None
+
+    # Try Home.md for subsystem metadata, fall back to _subsystem.yml
+    sub_meta = extract_home_metadata(clone_dir)
+    if sub_meta:
+        log(f"{name}: found subsystem metadata in Home.md")
+    else:
+        log(f"{name}: no Home.md metadata — fetching _subsystem.yml from {repo}@{branch}")
+        sub_meta = fetch_subsystem_yml(repo, branch, token)
+
+    title = sub_meta.get("title", name)
+    blurb = sub_meta.get("blurb", "")
+    order = sub_meta.get("order", 100)
 
     # Wiki repos are flat — all .md files at the root.
     # Filter out the Home.md that GitHub auto-creates (it's just a stub).
