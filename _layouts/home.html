@@ -21,14 +21,14 @@ layout: default
       <h2>{{ s.title | default: s.name }}</h2>
       {% if s.blurb %}<p>{{ s.blurb }}</p>{% endif %}
     </a>
-    {% if s.pages or s.updated %}
-    <p class="card-meta muted">
-      {%- if s.pages %}{{ s.pages }} page{% if s.pages != 1 %}s{% endif %}{% endif -%}
-      {%- if s.pages and s.updated %} · {% endif -%}
-      {%- if s.updated %}updated {{ s.updated | date: "%b %-d, %Y" }}{% endif -%}
+    <p class="card-foot">
+      <span class="card-meta">
+        {%- if s.pages %}{{ s.pages }} page{% if s.pages != 1 %}s{% endif %}{% endif -%}
+        {%- if s.pages and s.updated %} · {% endif -%}
+        {%- if s.updated %}updated {{ s.updated | date: "%b %-d, %Y" }}{% endif -%}
+      </span>
+      <a class="card-repo" href="{{ s.repo_url }}">Source repo &rarr;</a>
     </p>
-    {% endif %}
-    <a class="card-repo" href="{{ s.repo_url }}">Source repo &rarr;</a>
   </li>
   {% endfor %}
 </ul>

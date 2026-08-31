@@ -18,8 +18,9 @@ Do exactly this:
    HTML comment (`<!-- meta: {"order":10,"tags":[…],"updated":"YYYY-MM-DD"} -->`).
    **No YAML front matter** — the wiki renders it as visible text.
 2. Make `Home.md` the index: one line per page with its blurb. It's where the hub's card
-   lands. An optional `meta` comment there with `title`/`blurb`/`order` overrides the
-   hub registry.
+   lands, and nothing generates it — you maintain it by hand. An optional `meta` comment
+   there with `title`/`blurb`/`order` overrides the hub registry; it is the only thing
+   the hub reads from inside your wiki.
 3. Add `.github/workflows/notify-docs-hub.yml` to the **code** repo — copy it verbatim
    from the spec above (or from `examples/subsystem-template/` in the hub repo). It
    triggers on `gollum` (wiki edits). No edits needed.

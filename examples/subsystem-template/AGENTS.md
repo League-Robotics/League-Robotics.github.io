@@ -27,7 +27,7 @@ git add -A && git commit -m "docs: …" && git push
   `<!-- meta: {"order":10,"tags":["…"],"updated":"YYYY-MM-DD"} -->`.
 - Keep `Home.md` as the index: one line per page with its blurb, plus open tasks and
   things to remember, so the next agent finds them fast. It is where the hub's card
-  lands.
+  lands, and **nothing generates it — you maintain it by hand.**
 - Bump `updated` whenever you revise a page.
 - Wiki edits auto-ping the hub to refresh its listing (see
   [`.github/workflows/notify-docs-hub.yml`](.github/workflows/notify-docs-hub.yml)).

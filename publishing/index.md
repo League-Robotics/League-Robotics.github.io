@@ -31,9 +31,37 @@ your repo's wiki  --- ping ("docs-updated") --->  hub lists + links
 ```
 
 > **Moving from `docs/wiki/`?** The hub used to mirror a `docs/wiki/` directory into
-> `league-robotics.github.io/subsystems/<name>/`. It no longer does. Move those files
-> into the repo's GitHub wiki (see below), convert their front matter to a `meta`
-> comment, and delete `docs/wiki/` so there is only one copy.
+> `league-robotics.github.io/subsystems/<name>/` and generate the index page for you.
+> It no longer does either. To migrate:
+>
+> 1. Move `docs/wiki/*.md` into the repo's GitHub wiki, converting each file's YAML front
+>    matter into an `# H1` + `> blurb` + `meta` comment (see below).
+> 2. Fold `_subsystem.yml`'s `title`/`blurb`/`order` into a `meta` comment on `Home.md`,
+>    then delete the file — the hub no longer reads it.
+> 3. **Write `Home.md` yourself.** The hub used to generate your index page; now `Home.md`
+>    *is* the index and nothing maintains it but you. If yours still says
+>    "each page is published on the hub", that is left over from the old mirror and is no
+>    longer true — pages are published *in this wiki*.
+> 4. Replace the old notify workflow's `push` / `paths: docs/wiki/**` trigger with
+>    `on: gollum` (full file below), since wiki edits are not pushes to your repo.
+> 5. Delete `docs/wiki/`, so there is never a second copy to drift.
+>
+> Old `/subsystems/<name>/…` hub URLs are gone; anything pointing at them should point at
+> the wiki instead.
+
+## What the hub actually reads
+
+Very little — which is the point. From your wiki the hub takes only:
+
+1. **That it exists and is reachable**, plus how many `*.md` pages it has and the date of
+   its last commit. That's the "10 pages · updated Aug 31, 2026" line on your card.
+2. **`Home.md`'s `meta` comment**, if it has one — `title`, `blurb`, `order` for the card.
+
+That's the whole contract. Everything else below — page titles, blurbs, `order`, `tags` —
+is **convention for humans and agents, not hub input**. Nothing is validated, nothing
+breaks if you deviate, and no page is rejected. Follow the conventions anyway: the next
+agent to open your wiki is the one who benefits, and they are what make `Home.md`
+maintainable.
 
 ## Editing your wiki as an agent
 
@@ -89,8 +117,10 @@ Body markdown… (your real documentation)
 | `> blurb` | yes | One-line summary; reused as the page's line in `Home.md`. |
 | `meta` comment | no | Machine-readable extras. Invisible when rendered. |
 
-Recognized `meta` keys: `order` (sort position in `Home.md`, default 100), `tags`
-(free-form list), `updated` (`YYYY-MM-DD`, when you last revised the page).
+Recognized `meta` keys: `order` (where the page belongs in `Home.md`, default 100),
+`tags` (free-form list), `updated` (`YYYY-MM-DD`, when you last revised the page). The
+hub reads none of these — they are for whoever maintains `Home.md`, which since the hub
+stopped generating index pages is **you**.
 
 Filenames are the URL, so keep them lowercase and hyphenated (`fleet-daemon.md` →
 `…/wiki/fleet-daemon`). Names starting with `_` are GitHub's own chrome —
@@ -154,9 +184,10 @@ jobs:
 ```
 
 > The workflow file lives in the **code** repo, not the wiki, and `gollum` runs it from
-> your default branch. Nothing breaks if you skip it — the hub rebuilds on its own
-> schedule and on any hub change — but the card's page count and "updated" date will
-> lag until then.
+> your default branch. Either way your docs are live the moment you push to the wiki —
+> people read them there. The ping only refreshes the card's page count and "updated"
+> date. **There is no cron on the hub**, so if you skip this workflow those two numbers
+> stay stale until something else triggers a hub build.
 
 ### `AGENTS.md` (leave yourself a map)
 

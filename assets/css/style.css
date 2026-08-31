@@ -80,28 +80,36 @@ pre code { background: none; padding: 0; }
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
 }
+/* A column so .card-link can grow and push .card-foot to the bottom edge of every
+   card — otherwise each footer floats under a different-length blurb. */
 .card {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--card-bg);
   transition: border-color 0.15s ease;
 }
 .card:hover { border-color: var(--accent); }
-.card-link { display: block; padding: 1rem 1.1rem; color: var(--fg); }
+.card-link { flex: 1; display: block; padding: 1rem 1.1rem 0.75rem; color: var(--fg); }
 .card-link:hover { text-decoration: none; }
 .card h2 { margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--accent); }
 .card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
-.card-meta {
-  margin: 0 1.1rem 0.4rem;
-  font-size: 0.85rem;
+
+/* Both selectors need `.card ` to outrank `.card p` above, which would otherwise
+   strip the footer's indent and size. */
+.card .card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.15rem 0.75rem;
+  margin: 0;
+  padding: 0 1.1rem 0.9rem;
+  font-size: 0.8rem;
 }
-.card-meta:empty { display: none; }
-.card-repo {
-  display: inline-block;
-  margin: 0 1.1rem 1rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
+.card .card-meta { margin: 0; color: var(--muted); font-size: inherit; }
+.card-repo { color: var(--muted); white-space: nowrap; }
 .card-repo:hover { color: var(--accent); }
 
 /* Subsystem + doc lists */
