@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Pull each registered subsystem's docs/wiki/ and stage it for the Jekyll build.
+"""Pull each registered subsystem's GitHub wiki and stage it for the Jekyll build.
 
-The hub owns the registry (subsystems.yml). For every entry we shallow-clone the
-repo, read its docs/wiki/_subsystem.yml plus the front matter of each docs/wiki/*.md,
-mirror the doc bodies into subsystems/<name>/ (with Jekyll front matter injected),
-and write _data/subsystems.yml for the home page.
+The hub owns the registry (subsystems.yml). For every entry we:
+  1. Read _subsystem.yml from the main repo's docs/wiki/ (via raw URL)
+  2. Clone the repo's wiki (*.wiki.git) — wikis are flat repos with .md pages
+  3. Parse front matter and mirror doc bodies into subsystems/<name>/
+  4. Write _data/subsystems.yml for the home page
 
 Everything this script writes is gitignored — it is regenerated on every build.
 
@@ -25,6 +26,7 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
 import frontmatter
@@ -48,7 +50,6 @@ DATA_DIR = ROOT / "_data"
 DATA_FILE = DATA_DIR / "subsystems.yml"
 
 DEFAULT_BRANCH = "main"
-DEFAULT_DOCS_PATH = "docs/wiki"
 
 
 def log(msg: str) -> None:
@@ -65,7 +66,6 @@ def clone(repo: str, branch: str, dest: Path, token: str) -> None:
         url = f"https://x-access-token:{token}@github.com/{repo}.git"
     else:
         url = f"https://github.com/{repo}.git"
-    # Never echo the token; pass the URL as a single arg, not via the shell.
     subprocess.run(
         ["git", "clone", "--depth", "1", "--branch", branch, url, str(dest)],
         check=True,
@@ -81,14 +81,48 @@ def slugify(value: str) -> str:
     return out.strip("-") or "doc"
 
 
-def rewrite_links(body: str, slug_by_file: dict, name: str, repo_url: str,
-                  branch: str, docs_path: str) -> str:
+def wiki_page_name(filename: str) -> str:
+    """Convert a wiki .md filename to its GitHub wiki page URL name.
+
+    GitHub wikis derive page names from filenames by dropping .md and
+    replacing hyphens/underscores with spaces. The URL uses the same
+    name with spaces replaced by hyphens.
+    """
+    stem = Path(filename).stem
+    name = stem.replace("-", " ").replace("_", " ")
+    url_name = name.replace(" ", "-")
+    return url_name
+
+
+def fetch_subsystem_yml(repo: str, branch: str, token: str) -> dict:
+    """Fetch _subsystem.yml from the main repo's docs/wiki/ via raw URL.
+
+    _subsystem.yml stays in the main repo (docs/wiki/). Read it via HTTP.
+    Returns parsed dict or empty dict on failure.
+    """
+    url = f"https://raw.githubusercontent.com/{repo}/{branch}/docs/wiki/_subsystem.yml"
+    req = urllib.request.Request(url)
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            if resp.status == 200:
+                return yaml.safe_load(resp.read().decode("utf-8")) or {}
+    except Exception as e:
+        warn(f"cannot fetch _subsystem.yml from {repo}: {e}")
+
+    return {}
+
+
+def rewrite_links(body: str, slug_by_file: dict, name: str, repo_url: str) -> str:
     """Fix relative *.md links so they resolve on the hub.
 
-    Authors cross-link docs with repo-relative paths (e.g. `](administration.md)`).
-    Under our directory-style permalinks those 404. A link to another doc in the
-    same wiki becomes its hub permalink; any other relative `.md` link becomes a
-    GitHub source URL so it still resolves. Absolute URLs and anchors are left alone.
+    Authors cross-link docs with flat filenames (e.g. `](administration.md)`).
+    Under our directory-style permalinks those would 404. A link to another doc
+    in the same wiki becomes its hub permalink; any other relative `.md` link
+    becomes a GitHub wiki URL so it still resolves. Absolute URLs and anchors
+    are left alone.
     """
 
     def resolve(target: str) -> str:
@@ -100,10 +134,8 @@ def rewrite_links(body: str, slug_by_file: dict, name: str, repo_url: str,
         sibling = slug_by_file.get(posixpath.basename(path))
         if sibling is not None and "/" not in path.strip("./"):
             return f"/subsystems/{name}/{sibling}/" + (sep + frag if sep else "")
-        # Relative .md outside the wiki: point at the source repo, resolved
-        # against the doc's directory (docs_path).
-        resolved = posixpath.normpath(posixpath.join(docs_path, path))
-        return f"{repo_url}/blob/{branch}/{resolved}" + (sep + frag if sep else "")
+        page = wiki_page_name(posixpath.basename(path))
+        return f"{repo_url}/wiki/{page}" + (sep + frag if sep else "")
 
     body = _INLINE_LINK.sub(lambda m: m["pre"] + resolve(m["t"]) + m["post"], body)
     body = _REF_LINK.sub(lambda m: m["pre"] + resolve(m["t"]), body)
@@ -117,7 +149,7 @@ def write_with_front_matter(path: Path, meta: dict, body: str) -> None:
 
 
 def collect_subsystem(entry: dict, token: str) -> dict | None:
-    """Clone one subsystem, mirror its docs, return its home-page summary."""
+    """Clone one subsystem's wiki, mirror its docs, return its home-page summary."""
     name = entry.get("name")
     repo = entry.get("repo")
     if not name or not repo:
@@ -125,57 +157,46 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         return None
 
     branch = entry.get("branch", DEFAULT_BRANCH)
-    docs_path = entry.get("docs_path", DEFAULT_DOCS_PATH)
     repo_url = f"https://github.com/{repo}"
-    clone_dir = TMP / name
 
-    log(f"{name}: cloning {repo}@{branch}")
-    try:
-        clone(repo, branch, clone_dir, token)
-    except subprocess.CalledProcessError as e:
-        warn(f"{name}: clone failed ({e.stderr.strip().splitlines()[-1:] or e}) — skipping")
-        return None
-
-    wiki = clone_dir / docs_path
-    if not wiki.is_dir():
-        warn(f"{name}: no {docs_path}/ in {repo} — skipping")
-        return None
-
-    # Subsystem-level metadata (display title/blurb/order). The registry owns
-    # *where* the repo is; _subsystem.yml owns *what it's called*.
-    meta_file = wiki / "_subsystem.yml"
-    sub_meta = {}
-    if meta_file.is_file():
-        try:
-            sub_meta = yaml.safe_load(meta_file.read_text(encoding="utf-8")) or {}
-        except yaml.YAMLError as e:
-            warn(f"{name}: bad _subsystem.yml ({e}) — using defaults")
-    else:
-        warn(f"{name}: no _subsystem.yml — using defaults")
+    # Fetch _subsystem.yml from the main repo (still lives in docs/wiki/)
+    log(f"{name}: fetching _subsystem.yml from {repo}@{branch}")
+    sub_meta = fetch_subsystem_yml(repo, branch, token)
 
     title = sub_meta.get("title", name)
     blurb = sub_meta.get("blurb", "")
     order = sub_meta.get("order", 100)
 
-    # Pass 1: parse every doc and compute its slug, so we can resolve
-    # cross-doc links before writing any bodies.
+    # Clone the wiki repo. Wiki repos always live at {repo}.wiki.git
+    # and use 'master' as their default branch.
+    wiki_repo = f"{repo}.wiki"
+    clone_dir = TMP / name
+    log(f"{name}: cloning wiki {wiki_repo}")
+    try:
+        clone(wiki_repo, "master", clone_dir, token)
+    except subprocess.CalledProcessError as e:
+        warn(f"{name}: wiki clone failed ({e.stderr.strip().splitlines()[-1:] or e}) — skipping")
+        return None
+
+    # Wiki repos are flat — all .md files at the root.
+    # Filter out the Home.md that GitHub auto-creates (it's just a stub).
+    wiki_files = sorted(clone_dir.glob("*.md"))
+    if not wiki_files:
+        warn(f"{name}: no .md files in wiki — skipping")
+        return None
+
+    # Pass 1: parse every doc and compute its slug
     parsed = []
-    for md in sorted(wiki.glob("*.md")):
-        if md.name.startswith("_"):
+    for md in wiki_files:
+        if md.name == "Home.md":
             continue
         try:
             post = frontmatter.load(md)
-        except Exception as e:  # noqa: BLE001 - frontmatter raises various types
+        except Exception as e:
             warn(f"{name}/{md.name}: unreadable front matter ({e}) — skipping doc")
             continue
         slug = slugify(str(post.get("slug") or md.stem))
         if slug == RESERVED_SLUG:
-            # The generated subsystem landing page is written to
-            # OUT_DIR/<name>/index.md further down, so a doc claiming this slug
-            # is silently overwritten by it while still being listed -- the link
-            # then 404s. The publishing contract tells authors to keep a
-            # docs/wiki/index.md as their map, so this is an ordinary thing to
-            # hit; rename it rather than dropping the doc.
             slug = FALLBACK_SLUG
             warn(f"{name}: {md.name} claims the reserved '{RESERVED_SLUG}' slug "
                  f"(the generated landing page owns it) -- publishing it as "
@@ -190,11 +211,10 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         doc_title = post.get("title") or md.stem
         doc_blurb = post.get("blurb", "")
         doc_order = post.get("order", 100)
-        # Optional source date for the page footer; `updated` wins over `date`.
         doc_updated = post.get("updated") or post.get("date")
         url = f"/subsystems/{name}/{slug}/"
-        source_url = f"{repo_url}/blob/{branch}/{docs_path}/{md.name}"
-        body = rewrite_links(post.content, slug_by_file, name, repo_url, branch, docs_path)
+        source_url = f"{repo_url}/wiki/{wiki_page_name(md.name)}/_edit"
+        body = rewrite_links(post.content, slug_by_file, name, repo_url)
 
         doc_meta = {
             "layout": "doc",
@@ -231,6 +251,7 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
             "title": title,
             "blurb": blurb,
             "repo_url": repo_url,
+            "wiki_url": f"{repo_url}/wiki",
             "docs": docs,
         },
         "",
@@ -243,6 +264,7 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         "order": order,
         "url": f"/subsystems/{name}/",
         "repo_url": repo_url,
+        "wiki_url": f"{repo_url}/wiki",
     }
 
 
