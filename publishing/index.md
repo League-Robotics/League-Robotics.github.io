@@ -11,32 +11,39 @@ need is here — no other page required.
 
 ## How the hub works
 
-- You author docs **in your own repo**, under `docs/wiki/`. Your repo is the source of truth.
+- You author docs **in your repo's GitHub wiki** (`{repo}/wiki`). The wiki is the source of truth.
 - The hub (`League-Robotics.github.io`) keeps a registry, [`subsystems.yml`](https://github.com/League-Robotics/League-Robotics.github.io/blob/master/subsystems.yml), of which repos to publish.
-- On each build, the hub **pulls** every registered repo's `docs/wiki/`, renders the docs,
+- On each build, the hub **clones** every registered repo's wiki, renders the docs,
   and publishes them at `https://league-robotics.github.io/subsystems/<name>/`.
-- **The hub never writes to your repo, and you never push content to the hub.** You only
-  send a lightweight "I changed" ping that triggers a rebuild.
+- **The hub never writes to your repo, and you never push content to the hub.** You ping the
+  hub to trigger a rebuild when content changes.
+- `docs/wiki/_subsystem.yml` (the only file kept in the repo) holds subsystem metadata
+  (title, blurb, order). The hub reads this via raw URL on each build.
 
 ```
-your repo (docs/wiki/) --- ping ("docs-updated") ---> hub pulls + renders + publishes
-        ^ source of truth                                     league-robotics.github.io
+your wiki ({repo}.wiki) --- docs are authored here ---> hub clones + renders + publishes
+       ^ source of truth                         league-robotics.github.io
+
+docs/wiki/_subsystem.yml --- metadata (title, blurb) ---> hub reads via raw URL
 ```
 
 ## What your repo needs
 
 ```
 docs/wiki/
-  _subsystem.yml          # subsystem metadata (title, blurb)
-  index.md                # the map: links key docs + lists open tasks (see "Keep your wiki useful")
-  overview.md             # one or more docs; each *.md becomes one page
-  ...
+  _subsystem.yml          # subsystem metadata (title, blurb, order) — THE ONLY FILE HERE
 .github/workflows/
-  notify-docs-hub.yml     # pings the hub when docs/wiki/ changes
+  notify-docs-hub.yml     # pings the hub when _subsystem.yml changes
 AGENTS.md                 # repo-root note so the next agent knows the wiki publishes here
 ```
 
+The actual documentation lives in the **GitHub wiki** — cloneable at
+`https://github.com/<owner>/<repo>.wiki.git`. Each `.md` file in the wiki is one
+published page.
+
 ### `docs/wiki/_subsystem.yml`
+
+This is the **only file** that stays in `docs/wiki/`. It holds subsystem metadata:
 
 ```yaml
 name: my-subsystem        # stable key; match your registry entry
@@ -45,10 +52,10 @@ blurb: One sentence describing this subsystem.
 order: 100                # optional — lower sorts earlier on the home page
 ```
 
-### Each `docs/wiki/*.md`
+### Wiki pages (each `{page}.md`)
 
-Every doc is normal Markdown with a front-matter header. Files whose names start with
-`_` are ignored (that's how `_subsystem.yml` stays out of the doc list).
+Every wiki page is normal Markdown with a front-matter header. All pages at the wiki
+root are published. GitHub's auto-created `Home.md` is ignored.
 
 ```markdown
 ---
@@ -76,7 +83,8 @@ adds the date *you* last touched the source.
 
 ### `.github/workflows/notify-docs-hub.yml`
 
-Copy this **verbatim** (no edits needed — it figures out your repo name automatically):
+This workflow pings the hub when `_subsystem.yml` changes. Copy it **verbatim**
+(no edits needed — it figures out your repo name automatically):
 
 ```yaml
 name: Notify docs hub
@@ -110,33 +118,33 @@ jobs:
 
 > If your default branch isn't `main`, change `branches: [main]` accordingly.
 
+**When wiki content changes** (new pages, edits), trigger a rebuild manually:
+Go to the hub's [Actions tab](https://github.com/League-Robotics/League-Robotics.github.io/actions)
+→ "Publish docs" → "Run workflow".
+
 ### `AGENTS.md` (leave yourself a map)
 
-Once the wiki is set up, drop an `AGENTS.md` at the **root of your repo**. Its job is to
-tell the next agent — who may arrive months later with no context — what `docs/wiki/` is,
-that this repo's docs are published to the hub, and where the authoritative instructions
-live (this page). Copy this and replace `<name>`:
+Copy this into the root of your repo (replace `<name>` and `<org>/<repo>`):
 
 ```markdown
 # AGENTS.md — this repo publishes docs to the League Robotics hub
 
-Documentation for this repo lives under `docs/wiki/`. Those files are the **source of
-truth**; the League Robotics docs hub *pulls* them and publishes them at
+Documentation for this repo lives in the **GitHub wiki**:
+<https://github.com/<org>/<repo>/wiki>
+
+The League Robotics docs hub *clones the wiki* and publishes it at
 <https://league-robotics.github.io/subsystems/<name>/>. The hub never writes back here —
-edit docs in this repo only.
+edit wiki pages directly.
 
 ## What to do
 
-When you learn something a future agent will need, write it into `docs/wiki/`:
+When you learn something a future agent will need, edit or add a page in the wiki:
 
-- Each `docs/wiki/*.md` is one published page and needs `title:` and `blurb:` front
-  matter. Files starting with `_` are not published.
-- `docs/wiki/_subsystem.yml` holds this subsystem's `name` / `title` / `blurb`.
-- Keep `docs/wiki/index.md` as the map: link the key docs and list open tasks / things to
-  remember, so the next agent finds them fast.
-- Add an `updated:` date to a doc's front matter when you change it.
-- Changes under `docs/wiki/**` auto-ping the hub to rebuild (see
-  `.github/workflows/notify-docs-hub.yml`).
+- Each wiki `*.md` page is one published page and needs `title:` and `blurb:` front matter.
+- `docs/wiki/_subsystem.yml` (the ONLY file here) holds this subsystem's `name`/`title`/`blurb`.
+  Changes to it auto-ping the hub.
+- Add an `updated:` date to a page's front matter when you change it.
+- After editing wiki pages, manually trigger a rebuild from the hub's Actions tab.
 
 ## How to understand what to do
 
@@ -149,21 +157,18 @@ authoritative spec at **<https://league-robotics.github.io/publishing/>**. Start
 The wiki isn't just public docs — it's the durable memory for agents working in this repo.
 Two habits keep it that way:
 
-- **Index your knowledge base.** As soon as you have more than a handful of docs — design
-  notes, decisions, open tasks, gotchas a future agent must not forget — add a top-level
-  `docs/wiki/index.md` with `order: 0` that links the important pages and lists the
-  outstanding work. It sorts first, so it's the obvious entry point. *How* you organize it
-  doesn't matter; that it's discoverable does.
-- **Date your pages.** Make it clear when each page was written or published. The hub
-  stamps every rendered page with the date it was generated (in the footer). To also show
-  when *you* last revised the source, set `updated:` (or `date:`) in the doc's front
-  matter — see the field table above.
+- **Index your knowledge base.** As soon as you have more than a handful of pages — design
+  notes, decisions, open tasks, gotchas a future agent must not forget — the hub's generated
+  landing page links them all. *How* you organize the pages in the wiki doesn't matter;
+  that they're discoverable does.
+- **Date your pages.** Set `updated:` (or `date:`) in each page's front matter — see the
+  field table above.
 
 ## Authentication (one org-wide GitHub App)
 
-Both the hub (pulling repos) and your repo (pinging the hub) authenticate with a single
-**League Robotics Docs** GitHub App installed across the org. Each workflow mints a
-short-lived, least-privilege token at run time — there are no long-lived personal tokens.
+The hub authenticates with a single **League Robotics Docs** GitHub App installed across
+the org. Each workflow mints a short-lived, least-privilege token at run time — there are
+no long-lived personal tokens.
 
 An org admin sets this up **once** (see the hub README). After that, the org-level
 `vars.DOCS_HUB_APP_ID` and `secrets.DOCS_HUB_APP_PRIVATE_KEY` referenced above are already
@@ -179,19 +184,15 @@ subsystems:
   - name: my-subsystem
     repo: League-Robotics/my-repo
     branch: main
-    docs_path: docs/wiki     # optional, this is the default
 ```
 
-Once merged, your docs appear at `https://league-robotics.github.io/subsystems/my-subsystem/`
-on the next build (your ping triggers one automatically).
+Once merged, your wiki pages appear at
+`https://league-robotics.github.io/subsystems/my-subsystem/` on the next build.
 
 ## Troubleshooting
 
 - **My docs aren't showing up.** Confirm your repo is in `subsystems.yml`, the `branch`
-  matches, and `docs/wiki/_subsystem.yml` exists. A subsystem with no `docs/wiki/` is
-  skipped (the hub build logs a warning but still deploys everyone else).
-- **A page is missing.** Check that the file ends in `.md`, doesn't start with `_`, and has
-  valid front matter with `title`/`blurb`.
-- **The hub didn't rebuild after I pushed.** The notify workflow only fires on changes under
-  `docs/wiki/**`. Run it manually from the Actions tab (`workflow_dispatch`), or an admin can
-  re-run the hub's build manually.
+  matches, `docs/wiki/_subsystem.yml` exists, and your wiki has `.md` pages.
+- **A page is missing.** Check that the wiki page ends in `.md` and has valid front
+  matter with `title`/`blurb`. The auto-created `Home.md` page is not published.
+- **The hub didn't rebuild.** Trigger it manually from the hub's [Actions tab](https://github.com/League-Robotics/League-Robotics.github.io/actions).
