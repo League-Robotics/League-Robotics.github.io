@@ -30,12 +30,15 @@ import urllib.request
 from pathlib import Path
 
 import frontmatter
+import json
 import yaml
 
 # Matches inline link/image targets — `](target)` or `](target "title")` — and
 # reference-style definitions — `[label]: target`. Group "t" is the target.
 _INLINE_LINK = re.compile(r"(?P<pre>\]\()(?P<t>[^)\s]+)(?P<post>(?:\s+\"[^\"]*\")?\))")
 _REF_LINK = re.compile(r"(?P<pre>^[ \t]*\[[^\]]+\]:[ \t]*)(?P<t>\S+)", re.MULTILINE)
+# Extracts hidden metadata: <!-- meta: {"order":10,...} -->
+_META_COMMENT = re.compile(r'<!--\s*meta:\s*(\{.*?\})\s*-->', re.DOTALL)
 
 ROOT = Path(__file__).resolve().parent.parent
 #: Slug owned by the generated subsystem landing page; a doc may not use it.
@@ -148,6 +151,79 @@ def write_with_front_matter(path: Path, meta: dict, body: str) -> None:
     path.write_text(f"---\n{fm}\n---\n{body}", encoding="utf-8")
 
 
+def parse_page(md: Path) -> dict:
+    """Parse a wiki page, supporting both YAML frontmatter and markdown-header formats.
+
+    Returns a dict with 'title', 'blurb', 'order', 'slug', 'tags', 'updated',
+    'content' (body to render), and 'stem' (filename without .md).
+    """
+    text = md.read_text(encoding="utf-8")
+
+    # Try frontmatter first (backward compat with old YAML pages)
+    try:
+        post = frontmatter.loads(text)
+        if post.metadata:
+            return {
+                "title": post.metadata.get("title") or md.stem,
+                "blurb": post.metadata.get("blurb", ""),
+                "order": post.metadata.get("order", 100),
+                "slug": post.metadata.get("slug", ""),
+                "tags": post.metadata.get("tags", []),
+                "updated": str(post.metadata.get("updated") or post.metadata.get("date") or ""),
+                "content": post.content,
+                "stem": md.stem,
+            }
+    except Exception:
+        pass
+
+    # New format: # Title, > Blurb, <!-- meta: {...} -->, body
+    meta = {"title": md.stem, "blurb": "", "order": 100, "tags": [], "updated": ""}
+    lines = text.split("\n")
+    body_start = 0
+
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if s.startswith("# ") and not meta.get("title_set"):
+            meta["title"] = s[2:].strip()
+            meta["title_set"] = True
+            body_start = i + 1
+        elif s.startswith("> ") and not meta.get("blurb"):
+            meta["blurb"] = s[2:].strip()
+            body_start = i + 1
+        elif not s:
+            body_start = max(body_start, i + 1)
+            continue
+        else:
+            # Hit non-header content
+            break
+
+    # Extract hidden metadata comment
+    remaining = "\n".join(lines[body_start:])
+    m = _META_COMMENT.search(remaining)
+    if m:
+        try:
+            hidden = json.loads(m.group(1))
+            meta["order"] = hidden.get("order", meta["order"])
+            meta["slug"] = hidden.get("slug", "")
+            meta["tags"] = hidden.get("tags", [])
+            meta["updated"] = str(hidden.get("updated", ""))
+            # Remove the comment from body
+            remaining = _META_COMMENT.sub("", remaining, count=1).lstrip()
+        except json.JSONDecodeError:
+            pass
+
+    return {
+        "title": meta["title"],
+        "blurb": meta.get("blurb", ""),
+        "order": meta["order"],
+        "slug": meta.get("slug", ""),
+        "tags": meta["tags"],
+        "updated": meta["updated"],
+        "content": remaining,
+        "stem": md.stem,
+    }
+
+
 def collect_subsystem(entry: dict, token: str) -> dict | None:
     """Clone one subsystem's wiki, mirror its docs, return its home-page summary."""
     name = entry.get("name")
@@ -191,30 +267,30 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
         if md.name == "Home.md":
             continue
         try:
-            post = frontmatter.load(md)
+            data = parse_page(md)
         except Exception as e:
-            warn(f"{name}/{md.name}: unreadable front matter ({e}) — skipping doc")
+            warn(f"{name}/{md.name}: unreadable ({e}) — skipping doc")
             continue
-        slug = slugify(str(post.get("slug") or md.stem))
+        slug = slugify(str(data.get("slug") or data["stem"]))
         if slug == RESERVED_SLUG:
             slug = FALLBACK_SLUG
             warn(f"{name}: {md.name} claims the reserved '{RESERVED_SLUG}' slug "
                  f"(the generated landing page owns it) -- publishing it as "
                  f"'{slug}' instead")
-        parsed.append((md, post, slug))
+        parsed.append((md, data, slug))
 
     slug_by_file = {md.name: slug for md, _, slug in parsed}
 
     # Pass 2: rewrite intra-wiki links and write each doc.
     docs = []
-    for md, post, slug in parsed:
-        doc_title = post.get("title") or md.stem
-        doc_blurb = post.get("blurb", "")
-        doc_order = post.get("order", 100)
-        doc_updated = post.get("updated") or post.get("date")
+    for md, data, slug in parsed:
+        doc_title = data.get("title") or md.stem
+        doc_blurb = data.get("blurb", "")
+        doc_order = data.get("order", 100)
+        doc_updated = data.get("updated", "")
         url = f"/subsystems/{name}/{slug}/"
         source_url = f"{repo_url}/wiki/{wiki_page_name(md.name)}/_edit"
-        body = rewrite_links(post.content, slug_by_file, name, repo_url)
+        body = rewrite_links(data.get("content", ""), slug_by_file, name, repo_url)
 
         doc_meta = {
             "layout": "doc",
@@ -223,7 +299,7 @@ def collect_subsystem(entry: dict, token: str) -> dict | None:
             "subsystem": name,
             "permalink": url,
             "source_url": source_url,
-            "tags": post.get("tags", []),
+            "tags": data.get("tags", []),
         }
         if doc_updated:
             doc_meta["updated"] = str(doc_updated)
