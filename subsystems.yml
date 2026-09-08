@@ -34,12 +34,15 @@ subsystems:
       playfields — tag positions, orientation, velocity, and homography for AI
       agents and robot control loops.
 
-  - name: radio-robot
-    repo: League-Robotics/radio-robot
-    title: Radio Robot
+  - name: radio-robot-lib
+    repo: League-Robotics/radio-robot-lib
+    title: Radio Robot Protocol (V6)
     blurb: >-
-      C++ CODAL firmware and Python host library for the DFRobot QBot Pro
-      (micro:bit V2 + Nezha V2), driven over serial and micro:bit radio.
+      Hardware-agnostic C++/Python library pair for commanding a differential-drive
+      robot over an ASCII radio/serial link. Protocol v6 with mandatory sequence
+      ids, cumulative ack/nack reliability layer, six-operation motion API,
+      DiffDrive wheel kernel, and host-side Python client — all testable on a
+      laptop with no robot attached.
 
   - name: python-serial-hub-control
     repo: League-Robotics/python-serial-hub-control
