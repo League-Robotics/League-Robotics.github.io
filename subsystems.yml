@@ -73,3 +73,10 @@ subsystems:
       ↔ nRF radio bridge — no host library required, dual-mode (RAW250 /
       MakeCode), flash-persistent config.
     order: 110
+
+  - name: mbtools
+    repo: League-Microbit/mbtools
+    title: MB Tools
+    blurb: >-
+      Find, flash and talk to BBC micro:bits across a fleet of hosts — one
+      registry daemon per host, plus clients that reach any board by name.
