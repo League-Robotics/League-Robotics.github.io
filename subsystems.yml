@@ -80,3 +80,11 @@ subsystems:
     blurb: >-
       Find, flash and talk to BBC micro:bits across a fleet of hosts — one
       registry daemon per host, plus clients that reach any board by name.
+
+  - name: nezha-robot-template
+    repo: League-Microbit/nezha-robot-template
+    title: Nezha Robot Template
+    blurb: >-
+      Start programming an ElecFreaks Nezha robot in MakeCode: closed-loop
+      driving, turns in degrees, and a pose the robot always knows.
+    order: 30
