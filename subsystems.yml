@@ -58,13 +58,6 @@ subsystems:
       Scores FRC/FTC team code against an 8-dimension sophistication rubric and
       helps teams build elite robot architecture.
 
-  - name: mbdeploy
-    repo: Busboombot/mbdeploy
-    title: mbdeploy
-    blurb: >-
-      micro:bit build/flash/serial CLI and fleet daemon — addresses boards by a
-      stable human-readable name and reaches them over the LAN with mDNS.
-
   - name: microbit-radio-relay
     repo: League-Robotics/microbit-radio-relay
     title: micro:bit Radio Relay

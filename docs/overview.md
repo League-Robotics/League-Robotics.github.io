@@ -7,7 +7,7 @@
 
 ## What this is
 
-The `League-Robotics` org has many subsystem repos (`ros-deploy`, `aprilcam`, `mbdeploy`, …)
+The `League-Robotics` org has many subsystem repos (`ros-deploy`, `aprilcam`, `mbtools`, …)
 with no single place to discover them. This repo, `League-Robotics.github.io`, is a small
 Jekyll site served at <https://league-robotics.github.io/> that lists them all and links to
 each one's documentation.
